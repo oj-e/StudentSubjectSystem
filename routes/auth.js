@@ -18,7 +18,10 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Teacher ID is required for teacher signup' });
     }
 
-    const [existing] = await db.query('SELECT id FROM Users WHERE email = ?', [email]);
+    const [existing] = await db.query(
+    'SELECT id FROM users WHERE email = ?',
+    [email]
+);
     if (existing.length > 0) {
       return res.status(409).json({ success: false, error: 'Email already registered' });
     }
@@ -27,7 +30,7 @@ router.post('/register', async (req, res) => {
     const status = role === 'teacher' ? 'pending' : 'approved';
 
     const [result] = await db.query(
-      'INSERT INTO Users (name, email, password_hash, role, department, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO users (name, email, password_hash, role, department, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [name, email, password_hash, role, department || null, teacher_id || null, status]
     );
 
@@ -51,7 +54,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email and password required' });
     }
 
-    const [rows] = await db.query('SELECT * FROM Users WHERE email = ?', [email]);
+    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
     if (rows.length === 0) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }

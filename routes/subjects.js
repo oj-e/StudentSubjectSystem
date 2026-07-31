@@ -7,11 +7,39 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, code, title, department FROM Subjects WHERE status = 'approved'"
+      "SELECT id, code, title, department FROM subjects WHERE status = 'approved'"
     );
     res.json({ success: true, subjects: rows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+// Admin rejects a proposed subject
+router.patch('/:id/reject', verifyToken, requireRole('admin'), async (req, res) => {
+  try {
+    const [result] = await db.query(
+      "UPDATE subjects SET status = 'rejected' WHERE id = ? AND status = 'pending'",
+      [req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Pending subject not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Subject rejected'
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 });
 
@@ -43,8 +71,8 @@ router.get('/pending', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT s.*, u.name AS proposed_by_name 
-       FROM Subjects s 
-       LEFT JOIN Users u ON s.proposed_by = u.id 
+       FROM subjects s 
+       LEFT JOIN users u ON s.proposed_by = u.id 
        WHERE s.status = 'pending'`
     );
     res.json({ success: true, subjects: rows });
@@ -57,17 +85,17 @@ router.get('/pending', verifyToken, requireRole('admin'), async (req, res) => {
 router.patch('/:id/approve', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    const [subjectRows] = await db.query('SELECT * FROM Subjects WHERE id = ?', [id]);
+    const [subjectRows] = await db.query('SELECT * FROM subjects WHERE id = ?', [id]);
     if (subjectRows.length === 0) {
       return res.status(404).json({ success: false, error: 'Subject not found' });
     }
 
-    await db.query("UPDATE Subjects SET status = 'approved' WHERE id = ?", [id]);
+    await db.query("UPDATE subjects SET status = 'approved' WHERE id = ?", [id]);
 
     const subject = subjectRows[0];
     if (subject.proposed_by) {
       await db.query(
-        'INSERT IGNORE INTO TeacherSubjects (teacher_id, subject_id) VALUES (?, ?)',
+        'INSERT IGNORE INTO teachersubjects (teacher_id, subject_id) VALUES (?, ?)',
         [subject.proposed_by, id]
       );
     }
@@ -78,4 +106,4 @@ router.patch('/:id/approve', verifyToken, requireRole('admin'), async (req, res)
   }
 });
 
-module.exports = router;
+module.exports = router; 
