@@ -6,11 +6,12 @@ const subjectRoutes = require('./routes/subjects');
 const adminRoutes = require('./routes/admin');
 const app = express();
 
+
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/admin', adminRoutes);
-
+app.use('/api/sessions', require('./routes/sessions'));
 app.get('/', (req, res) => {
   res.send('API is running');
 });

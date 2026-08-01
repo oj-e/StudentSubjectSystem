@@ -107,3 +107,60 @@ router.patch('/:id/approve', verifyToken, requireRole('admin'), async (req, res)
 });
 
 module.exports = router; 
+
+// Student's own enrolled subjects
+router.get('/mine', verifyToken, requireRole('student'), async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT s.id, s.code, s.title, s.department
+       FROM studentsubjects ss
+       JOIN subjects s ON ss.subject_id = s.id
+       WHERE ss.student_id = ?`,
+      [req.user.id]
+    );
+    res.json({ success: true, subjects: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Student enrolls in an approved subject
+router.post('/:id/enroll', verifyToken, requireRole('student'), async (req, res) => {
+  try {
+    const [subjectRows] = await db.query(
+      "SELECT id FROM subjects WHERE id = ? AND status = 'approved'",
+      [req.params.id]
+    );
+    if (subjectRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Subject not found or not approved' });
+    }
+
+    await db.query(
+      'INSERT INTO studentsubjects (student_id, subject_id) VALUES (?, ?)',
+      [req.user.id, req.params.id]
+    );
+
+    res.status(201).json({ success: true, message: 'Enrolled successfully' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ success: false, error: 'Already enrolled in this subject' });
+    }
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Student drops a subject
+router.delete('/:id/enroll', verifyToken, requireRole('student'), async (req, res) => {
+  try {
+    const [result] = await db.query(
+      'DELETE FROM studentsubjects WHERE student_id = ? AND subject_id = ?',
+      [req.user.id, req.params.id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: 'You are not enrolled in this subject' });
+    }
+    res.json({ success: true, message: 'Subject dropped' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
