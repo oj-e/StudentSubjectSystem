@@ -46,7 +46,7 @@ router.patch('/:id/reject', verifyToken, requireRole('admin'), async (req, res) 
 // Teacher proposes a new subject — goes in as pending
 router.post('/propose', verifyToken, requireRole('teacher'), async (req, res) => {
   try {
-    const { code, title, department } = req.body;
+    const { code, title, department } = req.body || {}; 
     if (!code || !title) {
       return res.status(400).json({ success: false, error: 'Code and title are required' });
     }
@@ -223,7 +223,7 @@ router.get('/requests/pending', verifyToken, requireRole('admin'), async (req, r
   }
 });
 
-// Admin: approve a teacher-subject request → creates the real link
+// Admin: approve a teacher-subject request 
 router.patch('/requests/:id/approve', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const [reqRows] = await db.query(
