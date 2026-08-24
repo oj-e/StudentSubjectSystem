@@ -6,16 +6,16 @@ const router = express.Router();
 
 router.post('/register', async (req, res) => {
   try {
-    const { role, name, email, department, password, teacher_id } = req.body;
+    const { role, name, email, department, password, lecturer_id } = req.body;
 
     if (!role || !name || !email || !password) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    if (!['student', 'teacher'].includes(role)) {
+    if (!['student', 'lecturer'].includes(role)) {
       return res.status(400).json({ success: false, error: 'Invalid role' });
     }
-    if (role === 'teacher' && !teacher_id) {
-      return res.status(400).json({ success: false, error: 'Teacher ID is required for teacher signup' });
+    if (role === 'lecturer' && !lecturer_id) {
+      return res.status(400).json({ success: false, error: 'Lecturer ID is required for lecturer signup' });
     }
 
     const [existing] = await db.query(
@@ -27,16 +27,16 @@ router.post('/register', async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-    const status = role === 'teacher' ? 'pending' : 'approved';
+    const status = role === 'lecturer' ? 'pending' : 'approved';
 
     const [result] = await db.query(
-      'INSERT INTO users (name, email, password_hash, role, department, teacher_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, email, password_hash, role, department || null, teacher_id || null, status]
+      'INSERT INTO users (name, email, password_hash, role, department, lecturer_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, email, password_hash, role, department || null, lecturer_id || null, status]
     );
 
     res.status(201).json({
       success: true,
-      message: role === 'teacher'
+      message: role === 'lecturer'
         ? 'Account created — pending admin approval before you can log in.'
         : 'Account created successfully.',
       user: { id: result.insertId, name, email, role, status }

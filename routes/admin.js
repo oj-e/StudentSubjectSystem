@@ -3,30 +3,30 @@ const db = require('../db');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const router = express.Router();
 
-router.get('/teachers/pending', verifyToken, requireRole('admin'), async (req, res) => {
+router.get('/lecturers/pending', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, name, email, teacher_id, department, created_at FROM users WHERE role = 'teacher' AND status = 'pending'"
+      "SELECT id, name, email, lecturer_id, department, created_at FROM users WHERE role = 'lecturer' AND status = 'pending'"
     );
-    res.json({ success: true, teachers: rows });
+    res.json({ success: true, lecturers: rows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.patch('/teachers/:id/approve', verifyToken, requireRole('admin'), async (req, res) => {
+router.patch('/lecturers/:id/approve', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    await db.query("UPDATE users SET status = 'approved' WHERE id = ? AND role = 'teacher'", [req.params.id]);
-    res.json({ success: true, message: 'Teacher approved' });
+    await db.query("UPDATE users SET status = 'approved' WHERE id = ? AND role = 'lecturer'", [req.params.id]);
+    res.json({ success: true, message: 'Lecturer approved' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-router.patch('/teachers/:id/reject', verifyToken, requireRole('admin'), async (req, res) => {
+router.patch('/lecturers/:id/reject', verifyToken, requireRole('admin'), async (req, res) => {
   try {
-    await db.query("UPDATE users SET status = 'rejected' WHERE id = ? AND role = 'teacher'", [req.params.id]);
-    res.json({ success: true, message: 'Teacher rejected' });
+    await db.query("UPDATE users SET status = 'rejected' WHERE id = ? AND role = 'lecturer'", [req.params.id]);
+    res.json({ success: true, message: 'Lecturer rejected' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

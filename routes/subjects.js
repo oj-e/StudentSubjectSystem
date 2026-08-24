@@ -15,7 +15,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-
 // Admin rejects a proposed subject
 router.patch('/:id/reject', verifyToken, requireRole('admin'), async (req, res) => {
   try {
@@ -25,28 +24,19 @@ router.patch('/:id/reject', verifyToken, requireRole('admin'), async (req, res) 
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Pending subject not found'
-      });
+      return res.status(404).json({ success: false, error: 'Pending subject not found' });
     }
 
-    res.json({
-      success: true,
-      message: 'Subject rejected'
-    });
+    res.json({ success: true, message: 'Subject rejected' });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Teacher proposes a new subject — goes in as pending
-router.post('/propose', verifyToken, requireRole('teacher'), async (req, res) => {
+// Lecturer proposes a new subject — goes in as pending
+router.post('/propose', verifyToken, requireRole('lecturer'), async (req, res) => {
   try {
-    const { code, title, department } = req.body || {}; 
+    const { code, title, department } = req.body || {};
     if (!code || !title) {
       return res.status(400).json({ success: false, error: 'Code and title are required' });
     }
@@ -81,7 +71,7 @@ router.get('/pending', verifyToken, requireRole('admin'), async (req, res) => {
   }
 });
 
-// Admin: approve a proposed subject (also links the proposing teacher to it)
+// Admin: approve a proposed subject (also links the proposing lecturer to it)
 router.patch('/:id/approve', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -95,7 +85,7 @@ router.patch('/:id/approve', verifyToken, requireRole('admin'), async (req, res)
     const subject = subjectRows[0];
     if (subject.proposed_by) {
       await db.query(
-        'INSERT IGNORE INTO teachersubjects (teacher_id, subject_id) VALUES (?, ?)',
+        'INSERT IGNORE INTO lecturersubjects (lecturer_id, subject_id) VALUES (?, ?)',
         [subject.proposed_by, id]
       );
     }
@@ -105,8 +95,6 @@ router.patch('/:id/approve', verifyToken, requireRole('admin'), async (req, res)
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-module.exports = router; 
 
 // Student's own enrolled subjects
 router.get('/mine', verifyToken, requireRole('student'), async (req, res) => {
@@ -165,8 +153,8 @@ router.delete('/:id/enroll', verifyToken, requireRole('student'), async (req, re
   }
 });
 
-// Teacher requests to teach an EXISTING approved subject
-router.post('/:id/request', verifyToken, requireRole('teacher'), async (req, res) => {
+// Lecturer requests to teach an EXISTING approved subject
+router.post('/:id/request', verifyToken, requireRole('lecturer'), async (req, res) => {
   try {
     const subjectId = req.params.id;
 
@@ -179,7 +167,7 @@ router.post('/:id/request', verifyToken, requireRole('teacher'), async (req, res
     }
 
     const [already] = await db.query(
-      'SELECT id FROM teachersubjects WHERE teacher_id = ? AND subject_id = ?',
+      'SELECT id FROM lecturersubjects WHERE lecturer_id = ? AND subject_id = ?',
       [req.user.id, subjectId]
     );
     if (already.length > 0) {
@@ -187,7 +175,7 @@ router.post('/:id/request', verifyToken, requireRole('teacher'), async (req, res
     }
 
     const [pending] = await db.query(
-      "SELECT id FROM teachersubjectrequests WHERE teacher_id = ? AND subject_id = ? AND status = 'pending'",
+      "SELECT id FROM lecturersubjectrequests WHERE lecturer_id = ? AND subject_id = ? AND status = 'pending'",
       [req.user.id, subjectId]
     );
     if (pending.length > 0) {
@@ -195,7 +183,7 @@ router.post('/:id/request', verifyToken, requireRole('teacher'), async (req, res
     }
 
     await db.query(
-      'INSERT INTO teachersubjectrequests (teacher_id, subject_id) VALUES (?, ?)',
+      'INSERT INTO lecturersubjectrequests (lecturer_id, subject_id) VALUES (?, ?)',
       [req.user.id, subjectId]
     );
 
@@ -205,15 +193,15 @@ router.post('/:id/request', verifyToken, requireRole('teacher'), async (req, res
   }
 });
 
-// Admin: list pending teacher-subject requests
+// Admin: list pending lecturer-subject requests
 router.get('/requests/pending', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT r.id, r.status, r.created_at,
-              u.name AS teacher_name, u.email AS teacher_email,
+              u.name AS lecturer_name, u.email AS lecturer_email,
               s.code AS subject_code, s.title AS subject_title
-       FROM teachersubjectrequests r
-       JOIN users u ON r.teacher_id = u.id
+       FROM lecturersubjectrequests r
+       JOIN users u ON r.lecturer_id = u.id
        JOIN subjects s ON r.subject_id = s.id
        WHERE r.status = 'pending'`
     );
@@ -223,11 +211,11 @@ router.get('/requests/pending', verifyToken, requireRole('admin'), async (req, r
   }
 });
 
-// Admin: approve a teacher-subject request 
+// Admin: approve a lecturer-subject request
 router.patch('/requests/:id/approve', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const [reqRows] = await db.query(
-      "SELECT * FROM teachersubjectrequests WHERE id = ? AND status = 'pending'",
+      "SELECT * FROM lecturersubjectrequests WHERE id = ? AND status = 'pending'",
       [req.params.id]
     );
     if (reqRows.length === 0) {
@@ -235,23 +223,23 @@ router.patch('/requests/:id/approve', verifyToken, requireRole('admin'), async (
     }
 
     const request = reqRows[0];
-    await db.query("UPDATE teachersubjectrequests SET status = 'approved' WHERE id = ?", [request.id]);
+    await db.query("UPDATE lecturersubjectrequests SET status = 'approved' WHERE id = ?", [request.id]);
     await db.query(
-      'INSERT IGNORE INTO teachersubjects (teacher_id, subject_id) VALUES (?, ?)',
-      [request.teacher_id, request.subject_id]
+      'INSERT IGNORE INTO lecturersubjects (lecturer_id, subject_id) VALUES (?, ?)',
+      [request.lecturer_id, request.subject_id]
     );
 
-    res.json({ success: true, message: 'Request approved — teacher linked to subject' });
+    res.json({ success: true, message: 'Request approved — lecturer linked to subject' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Admin: reject a teacher-subject request
+// Admin: reject a lecturer-subject request
 router.patch('/requests/:id/reject', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const [result] = await db.query(
-      "UPDATE teachersubjectrequests SET status = 'rejected' WHERE id = ? AND status = 'pending'",
+      "UPDATE lecturersubjectrequests SET status = 'rejected' WHERE id = ? AND status = 'pending'",
       [req.params.id]
     );
     if (result.affectedRows === 0) {
@@ -263,4 +251,4 @@ router.patch('/requests/:id/reject', verifyToken, requireRole('admin'), async (r
   }
 });
 
-console.log('>>> subjects.js WITH request routes LOADED');
+module.exports = router;

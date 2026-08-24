@@ -3,8 +3,8 @@ const db = require('../db');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const router = express.Router();
 
-// Teacher creates a session — only for a subject they actually teach
-router.post('/', verifyToken, requireRole('teacher'), async (req, res) => {
+// Lecturer creates a session — only for a subject they actually teach
+router.post('/', verifyToken, requireRole('lecturer'), async (req, res) => {
   try {
     const { subject_id, title, description, date, start_time, type } = req.body;
     if (!subject_id || !title || !type) {
@@ -14,9 +14,9 @@ router.post('/', verifyToken, requireRole('teacher'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'type must be live or material' });
     }
 
-    // The gatekeeper check: does this teacher teach this subject?
+    // The gatekeeper check: does this lecturer teach this subject?
     const [teaches] = await db.query(
-      'SELECT id FROM teachersubjects WHERE teacher_id = ? AND subject_id = ?',
+      'SELECT id FROM lecturersubjects WHERE lecturer_id = ? AND subject_id = ?',
       [req.user.id, subject_id]
     );
     if (teaches.length === 0) {
@@ -24,7 +24,7 @@ router.post('/', verifyToken, requireRole('teacher'), async (req, res) => {
     }
 
     const [result] = await db.query(
-      'INSERT INTO sessions (subject_id, teacher_id, title, description, date, start_time, type) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO sessions (subject_id, lecturer_id, title, description, date, start_time, type) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [subject_id, req.user.id, title, description || null, date || null, start_time || null, type]
     );
 
@@ -34,17 +34,16 @@ router.post('/', verifyToken, requireRole('teacher'), async (req, res) => {
   }
 });
 
-
 // Student feed — ONLY sessions for subjects they're enrolled in
 router.get('/feed', verifyToken, requireRole('student'), async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT sess.id, sess.title, sess.description, sess.date, sess.start_time, sess.type,
               sub.code AS subject_code, sub.title AS subject_title,
-              u.name AS teacher_name
+              u.name AS lecturer_name
        FROM sessions sess
        JOIN subjects sub ON sess.subject_id = sub.id
-       JOIN users u ON sess.teacher_id = u.id
+       JOIN users u ON sess.lecturer_id = u.id
        JOIN studentsubjects ss ON ss.subject_id = sess.subject_id
        WHERE ss.student_id = ?
        ORDER BY sess.date, sess.start_time`,
@@ -111,19 +110,19 @@ router.post('/:id/attend', verifyToken, requireRole('student'), async (req, res)
   }
 });
 
-// Teacher views attendance for a session they teach
-router.get('/:id/attendance', verifyToken, requireRole('teacher'), async (req, res) => {
+// Lecturer views attendance for a session they teach
+router.get('/:id/attendance', verifyToken, requireRole('lecturer'), async (req, res) => {
   try {
     const sessionId = req.params.id;
 
     const [sessionRows] = await db.query(
-      'SELECT id, teacher_id, title FROM sessions WHERE id = ?',
+      'SELECT id, lecturer_id, title FROM sessions WHERE id = ?',
       [sessionId]
     );
     if (sessionRows.length === 0) {
       return res.status(404).json({ success: false, error: 'Session not found' });
     }
-    if (sessionRows[0].teacher_id !== req.user.id) {
+    if (sessionRows[0].lecturer_id !== req.user.id) {
       return res.status(403).json({ success: false, error: 'You do not teach this session' });
     }
 
@@ -141,7 +140,5 @@ router.get('/:id/attendance', verifyToken, requireRole('teacher'), async (req, r
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-
 
 module.exports = router;
