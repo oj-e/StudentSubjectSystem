@@ -1,9 +1,11 @@
 require('dotenv').config();
+const materialRoutes = require('./routes/materials');
 const express = require('express');
 const db = require('./db');
 const authRoutes = require('./routes/auth');
 const subjectRoutes = require('./routes/subjects');
 const adminRoutes = require('./routes/admin');
+const arModelRoutes = require('./routes/armodels');
 const app = express();
 
 
@@ -11,7 +13,10 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/armodels', arModelRoutes);
 app.use('/api/sessions', require('./routes/sessions'));
+app.use('/uploads', express.static('public/uploads'));
+app.use('/api/materials', materialRoutes);
 app.get('/', (req, res) => {
   res.send('API is running');
 });

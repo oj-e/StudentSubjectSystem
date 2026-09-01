@@ -28,7 +28,10 @@ router.post('/', verifyToken, requireRole('lecturer'), async (req, res) => {
       [subject_id, req.user.id, title, description || null, date || null, start_time || null, type]
     );
 
-    res.status(201).json({ success: true, message: 'Session created', session_id: result.insertId });
+    const roomName = `eduverse-session-${result.insertId}`;
+    await db.query('UPDATE sessions SET room_name = ? WHERE id = ?', [roomName, result.insertId]);
+
+    res.status(201).json({ success: true, message: 'Session created', session_id: result.insertId, room_name: roomName });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -45,7 +48,7 @@ router.get('/feed', verifyToken, requireRole('student'), async (req, res) => {
        JOIN subjects sub ON sess.subject_id = sub.id
        JOIN users u ON sess.lecturer_id = u.id
        JOIN studentsubjects ss ON ss.subject_id = sess.subject_id
-       WHERE ss.student_id = ?
+       WHERE ss.student_id = ? AND sess.status = 'active'
        ORDER BY sess.date, sess.start_time`,
       [req.user.id]
     );
@@ -136,6 +139,68 @@ router.get('/:id/attendance', verifyToken, requireRole('lecturer'), async (req, 
     );
 
     res.json({ success: true, session_title: sessionRows[0].title, attendance: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Lecturer edits a session they own
+router.patch('/:id', verifyToken, requireRole('lecturer'), async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+    const { title, description, date, start_time, type } = req.body || {};
+
+    const [sessionRows] = await db.query(
+      'SELECT id, lecturer_id FROM sessions WHERE id = ?',
+      [sessionId]
+    );
+    if (sessionRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    if (sessionRows[0].lecturer_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'You do not own this session' });
+    }
+
+    if (type && !['live', 'material'].includes(type)) {
+      return res.status(400).json({ success: false, error: 'type must be live or material' });
+    }
+
+    await db.query(
+      `UPDATE sessions SET
+        title = COALESCE(?, title),
+        description = COALESCE(?, description),
+        date = COALESCE(?, date),
+        start_time = COALESCE(?, start_time),
+        type = COALESCE(?, type)
+       WHERE id = ?`,
+      [title || null, description || null, date || null, start_time || null, type || null, sessionId]
+    );
+
+    res.json({ success: true, message: 'Session updated' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Lecturer cancels a session they own
+router.patch('/:id/cancel', verifyToken, requireRole('lecturer'), async (req, res) => {
+  try {
+    const sessionId = req.params.id;
+
+    const [sessionRows] = await db.query(
+      'SELECT id, lecturer_id FROM sessions WHERE id = ?',
+      [sessionId]
+    );
+    if (sessionRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    if (sessionRows[0].lecturer_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'You do not own this session' });
+    }
+
+    await db.query("UPDATE sessions SET status = 'cancelled' WHERE id = ?", [sessionId]);
+
+    res.json({ success: true, message: 'Session cancelled' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
