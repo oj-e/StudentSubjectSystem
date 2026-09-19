@@ -43,7 +43,8 @@ router.post('/register', async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error('REGISTER ERROR:', err);
+    res.status(500).json({ success: false, error: err.message || err.toString() });
   }
 });
 

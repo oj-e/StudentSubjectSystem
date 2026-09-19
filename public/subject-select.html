@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choose your subject — EduVerse AR</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <h1>What are you studying?</h1>
+    <p class="auth-subtitle">Pick your subject — your dashboard will only show lecturers and sessions for it</p>
+
+    <div id="form-message" class="form-message"></div>
+
+    <form id="subject-form" novalidate>
+      <div class="field">
+        <label for="subject">Subject</label>
+        <select id="subject" required>
+          <option value="">Loading subjects...</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-primary">Continue</button>
+    </form>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    const select = document.getElementById('subject');
+    const form = document.getElementById('subject-form');
+    const messageEl = document.getElementById('form-message');
+    const submitBtn = document.getElementById('submit-btn');
+
+    async function loadSubjects() {
+      try {
+        const res = await fetch(`${API_BASE}/subjects`);
+        const data = await res.json();
+        select.innerHTML = '<option value="">Select a subject</option>';
+        data.subjects.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.code} — ${s.title}`;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        select.innerHTML = '<option value="">Could not load subjects</option>';
+      }
+    }
+    loadSubjects();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const subjectId = select.value;
+      if (!subjectId) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Please wait...';
+
+      const data = await authFetch(`/subjects/${subjectId}/enroll`, { method: 'POST' });
+
+      if (!data.success) {
+        messageEl.textContent = data.error;
+        messageEl.className = 'form-message error';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue';
+        return;
+      }
+
+      messageEl.textContent = 'You\'re enrolled! Dashboard coming next.';
+      messageEl.className = 'form-message success';
+      submitBtn.textContent = 'Enrolled';
+    });
+  </script>
+</body>
+</html>

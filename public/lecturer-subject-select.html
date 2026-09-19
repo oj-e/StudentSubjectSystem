@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choose your subject — EduVerse AR</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <h1>What do you teach?</h1>
+    <p class="auth-subtitle">Request an existing subject, or propose a new one if it's not listed</p>
+
+    <div id="form-message" class="form-message"></div>
+
+    <div class="field">
+      <label><input type="radio" name="mode" value="request" checked> Request an existing subject</label><br>
+      <label><input type="radio" name="mode" value="propose"> Propose a new subject</label>
+    </div>
+
+    <form id="request-form">
+      <div class="field">
+        <label for="subject">Subject</label>
+        <select id="subject" required>
+          <option value="">Loading subjects...</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary">Send request</button>
+    </form>
+
+    <form id="propose-form" style="display:none;">
+      <div class="field">
+        <label for="code">Subject code</label>
+        <input type="text" id="code" placeholder="e.g. CHM101" required>
+      </div>
+      <div class="field">
+        <label for="title">Subject title</label>
+        <input type="text" id="title" placeholder="e.g. Intro to Chemistry" required>
+      </div>
+      <button type="submit" class="btn-primary">Propose subject</button>
+    </form>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    const requestForm = document.getElementById('request-form');
+    const proposeForm = document.getElementById('propose-form');
+    const messageEl = document.getElementById('form-message');
+    const select = document.getElementById('subject');
+
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (radio.checked) {
+          requestForm.style.display = radio.value === 'request' ? 'block' : 'none';
+          proposeForm.style.display = radio.value === 'propose' ? 'block' : 'none';
+        }
+      });
+    });
+
+    async function loadSubjects() {
+      const res = await fetch(`${API_BASE}/subjects`);
+      const data = await res.json();
+      select.innerHTML = '<option value="">Select a subject</option>';
+      data.subjects.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.code} — ${s.title}`;
+        select.appendChild(opt);
+      });
+    }
+    loadSubjects();
+
+    function showResult(data, successText) {
+      messageEl.textContent = data.success ? successText : data.error;
+      messageEl.className = `form-message ${data.success ? 'success' : 'error'}`;
+    }
+
+    requestForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!select.value) return;
+      const data = await authFetch(`/subjects/${select.value}/request`, { method: 'POST' });
+      showResult(data, 'Request sent — pending admin approval.');
+    });
+
+    proposeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = document.getElementById('code').value.trim();
+      const title = document.getElementById('title').value.trim();
+      const data = await authFetch('/subjects/propose', {
+        method: 'POST',
+        body: JSON.stringify({ code, title })
+      });
+      showResult(data, 'Subject proposed — pending admin approval.');
+    });
+  </script>
+</body>
+</html>

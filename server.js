@@ -6,9 +6,10 @@ const authRoutes = require('./routes/auth');
 const subjectRoutes = require('./routes/subjects');
 const adminRoutes = require('./routes/admin');
 const arModelRoutes = require('./routes/armodels');
+const cors = require('cors');
 const app = express();
 
-
+app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects', subjectRoutes);

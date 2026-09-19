@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign up — EduVerse AR</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <h1>Create your account</h1>
+    <p class="auth-subtitle">Join EduVerse AR as a student or lecturer</p>
+
+    <div id="form-message" class="form-message"></div>
+
+    <form id="register-form" novalidate>
+      <div class="field">
+        <label for="role">I am a</label>
+        <select id="role" required>
+          <option value="student">Student</option>
+          <option value="lecturer">Lecturer</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" required>
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+      </div>
+
+      
+
+      <div class="field" id="lecturer-id-field" style="display: none;">
+        <label for="lecturer_id">Lecturer ID</label>
+        <input type="text" id="lecturer_id">
+      </div>
+
+      <div class="field password-field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required>
+        <span class="password-toggle" data-target="password">Show</span>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-primary">Create account</button>
+    </form>
+
+    <p class="auth-footer">Already have an account? <a href="login.html">Log in</a></p>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/auth.js"></script> 
+</body>
+</html>
