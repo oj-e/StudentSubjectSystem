@@ -90,4 +90,70 @@ router.post('/login', async (req, res) => {
   }
 });
 
+const crypto = require('crypto');
+
+// Request a password reset — generates a token (shown on screen, no real email)
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    const [rows] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (rows.length === 0) {
+      // Don't reveal whether the email exists — generic response either way
+      return res.json({ success: true, message: 'If that email exists, a reset link has been generated.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    await db.query(
+      'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
+      [token, expires, rows[0].id]
+    );
+
+    // No real email service configured — the token is returned directly for demo purposes
+    res.json({
+      success: true,
+      message: 'Reset link generated.',
+      reset_token: token
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Reset the password using a valid token
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, new_password } = req.body || {};
+    if (!token || !new_password) {
+      return res.status(400).json({ success: false, error: 'Token and new password are required' });
+    }
+
+    const [rows] = await db.query(
+      'SELECT id, reset_token_expires FROM users WHERE reset_token = ?',
+      [token]
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired reset token' });
+    }
+    if (new Date(rows[0].reset_token_expires) < new Date()) {
+      return res.status(400).json({ success: false, error: 'This reset link has expired' });
+    }
+
+    const password_hash = await bcrypt.hash(new_password, 10);
+    await db.query(
+      'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+      [password_hash, rows[0].id]
+    );
+
+    res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
