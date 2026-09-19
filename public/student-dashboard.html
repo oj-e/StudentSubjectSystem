@@ -18,6 +18,13 @@
   <div class="dashboard-content">
     <h3>My Sessions</h3>
     <div id="sessions-list"><p class="empty-state">Loading...</p></div>
+    <div id="quiz-panel" style="display:none;">
+
+  <h3>Quiz</h3>
+  <div id="quiz-message" class="form-message"></div>
+  <div id="quiz-questions"></div>
+  <button id="quiz-submit-btn" class="btn-primary" style="max-width:200px;">Submit quiz</button>
+</div>
 
     <h3>My Attendance</h3>
     <div id="attendance-list"><p class="empty-state">Loading...</p></div>
@@ -44,6 +51,7 @@
             <div class="session-meta">${s.subject_code} — ${s.subject_title} · ${s.lecturer_name}${s.date ? ' · ' + s.date.split('T')[0] : ''}</div>
           </div>
           ${s.type === 'live' ? `<button class="btn-secondary" onclick="joinSession(${s.id})">Join</button>` : ''}
+<button class="btn-secondary" onclick="openQuiz(${s.id})">Take quiz</button>
         </div>
       `).join('');
     }
@@ -76,6 +84,62 @@
       loadSessions();
       loadAttendance();
     }
+
+    let currentQuizSessionId = null;
+
+async function openQuiz(sessionId) {
+  currentQuizSessionId = sessionId;
+  const data = await authFetch(`/quizzes/${sessionId}`);
+  const panel = document.getElementById('quiz-panel');
+  const container = document.getElementById('quiz-questions');
+  const messageEl = document.getElementById('quiz-message');
+  messageEl.textContent = '';
+  messageEl.className = 'form-message';
+
+  if (!data.success || data.questions.length === 0) {
+    container.innerHTML = '<p class="empty-state">No quiz for this session yet.</p>';
+    panel.style.display = 'block';
+    return;
+  }
+
+  container.innerHTML = data.questions.map(q => `
+    <div class="field">
+      <label>${q.question}</label>
+      ${q.options.map(opt => `
+        <label style="display:block; font-weight:400; margin-top:6px;">
+          <input type="radio" name="q${q.id}" value="${opt}"> ${opt}
+        </label>
+      `).join('')}
+    </div>
+  `).join('');
+
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+document.getElementById('quiz-submit-btn').addEventListener('click', async () => {
+  const messageEl = document.getElementById('quiz-message');
+  const inputs = document.querySelectorAll('#quiz-questions input[type=radio]:checked');
+  const answers = {};
+  inputs.forEach(input => {
+    const qId = input.name.replace('q', '');
+    answers[qId] = input.value;
+  });
+
+  const data = await authFetch(`/quizzes/${currentQuizSessionId}/submit`, {
+    method: 'POST',
+    body: JSON.stringify({ answers })
+  });
+
+  if (!data.success) {
+    messageEl.textContent = data.error;
+    messageEl.className = 'form-message error';
+    return;
+  }
+
+  messageEl.textContent = `You scored ${data.score} out of ${data.total}`;
+  messageEl.className = 'form-message success';
+});
   </script>
 </body>
 </html>

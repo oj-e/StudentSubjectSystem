@@ -51,6 +51,29 @@
 
     <h3>My Sessions</h3>
     <div id="sessions-list"><p class="empty-state">Loading...</p></div>
+
+    <h3>Add Quiz Question</h3>
+<div id="quiz-message" class="form-message"></div>
+<form id="quiz-form">
+  <div class="field">
+    <label for="quiz_session_id">Session</label>
+    <select id="quiz_session_id" required><option value="">Loading...</option></select>
+  </div>
+  <div class="field">
+    <label for="quiz_question">Question</label>
+    <input type="text" id="quiz_question" required>
+  </div>
+  <div class="field">
+    <label for="quiz_options">Options (comma separated)</label>
+    <input type="text" id="quiz_options" placeholder="e.g. 6, 8, 12, 14" required>
+  </div>
+  <div class="field">
+    <label for="quiz_correct">Correct answer (must match one option exactly)</label>
+    <input type="text" id="quiz_correct" required>
+  </div>
+  <button type="submit" class="btn-primary">Add question</button>
+</form>
+
   </div>
 
   <script src="js/common.js"></script>
@@ -112,6 +135,36 @@
         </div>
       `).join('');
     }
+
+    async function loadQuizSessionOptions() {
+  const select = document.getElementById('quiz_session_id');
+  const data = await authFetch('/sessions/mine');
+  if (data.success && data.sessions.length) {
+    select.innerHTML = data.sessions.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+  } else {
+    select.innerHTML = '<option value="">No sessions yet</option>';
+  }
+}
+
+document.getElementById('quiz-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const messageEl = document.getElementById('quiz-message');
+  const sessionId = document.getElementById('quiz_session_id').value;
+  const question = document.getElementById('quiz_question').value.trim();
+  const options = document.getElementById('quiz_options').value.split(',').map(o => o.trim()).filter(Boolean);
+  const correct_answer = document.getElementById('quiz_correct').value.trim();
+
+  const data = await authFetch(`/quizzes/${sessionId}`, {
+    method: 'POST',
+    body: JSON.stringify({ question, options, correct_answer })
+  });
+
+  messageEl.textContent = data.success ? 'Question added' : data.error;
+  messageEl.className = `form-message ${data.success ? 'success' : 'error'}`;
+  if (data.success) e.target.reset();
+});
+
+loadQuizSessionOptions();
 
     async function viewAttendance(sessionId) {
       const data = await authFetch(`/sessions/${sessionId}/attendance`);
