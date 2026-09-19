@@ -50,16 +50,15 @@
             <h4>${s.title} <span class="badge ${s.type === 'live' ? 'badge-live' : 'badge-material'}">${s.type === 'live' ? 'Live' : 'Material'}</span></h4>
             <div class="session-meta">${s.subject_code} — ${s.subject_title} · ${s.lecturer_name}${s.date ? ' · ' + s.date.split('T')[0] : ''}</div>
           </div>
-          ${s.type === 'live' ? `<button class="btn-secondary" onclick="joinSession(${s.id})">Join</button>` : ''}
-<button class="btn-secondary" onclick="openQuiz(${s.id})">Take quiz</button>
+          ${s.type === 'live' ? `<button class="btn-secondary btn-signature" onclick="joinSession(${s.id})" style="color:#fff; border:none;">Join</button>` : ''}
         </div>
       `).join('');
     }
 
     async function joinSession(sessionId) {
-      const data = await authFetch(`/sessions/${sessionId}/attend`, { method: 'POST' });
-      alert(data.success ? data.message : data.error);
-    }
+  const data = await authFetch(`/sessions/${sessionId}/attend`, { method: 'POST' });
+  showToast(data.success ? data.message : data.error, data.success ? 'success' : 'error');
+}
 
     async function loadAttendance() {
       const container = document.getElementById('attendance-list');

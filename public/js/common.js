@@ -32,3 +32,36 @@ function logout() {
   localStorage.removeItem('user');
   window.location.href = 'login.html';
 }
+
+function showToast(message, type = '') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <p>${message}</p>
+        <div class="modal-actions">
+          <button class="confirm-no">Cancel</button>
+          <button class="confirm-yes">Confirm</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('.confirm-yes').onclick = () => { overlay.remove(); resolve(true); };
+    overlay.querySelector('.confirm-no').onclick = () => { overlay.remove(); resolve(false); };
+  });
+}
