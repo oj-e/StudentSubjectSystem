@@ -7,11 +7,13 @@ const subjectRoutes = require('./routes/subjects');
 const adminRoutes = require('./routes/admin');
 const arModelRoutes = require('./routes/armodels');
 const cors = require('cors');
+const quizRoutes = require('./routes/quizzes');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
+app.use('/api/quizzes', quizRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/armodels', arModelRoutes);
