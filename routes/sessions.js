@@ -206,4 +206,22 @@ router.patch('/:id/cancel', verifyToken, requireRole('lecturer'), async (req, re
   }
 });
 
+// Lecturer: sessions they've created
+router.get('/mine', verifyToken, requireRole('lecturer'), async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT sess.id, sess.title, sess.description, sess.date, sess.start_time, sess.type, sess.status, sess.room_name,
+              sub.code AS subject_code, sub.title AS subject_title
+       FROM sessions sess
+       JOIN subjects sub ON sess.subject_id = sub.id
+       WHERE sess.lecturer_id = ?
+       ORDER BY sess.created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ success: true, sessions: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

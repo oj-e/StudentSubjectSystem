@@ -1,0 +1,4 @@
+node_modules/
+.env
+token.txt
+bash_file_command.txt

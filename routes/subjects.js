@@ -251,4 +251,20 @@ router.patch('/requests/:id/reject', verifyToken, requireRole('admin'), async (r
   }
 });
 
+// Lecturer: subjects they're approved to teach
+router.get('/lecturer/mine', verifyToken, requireRole('lecturer'), async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT s.id, s.code, s.title
+       FROM lecturersubjects ls
+       JOIN subjects s ON ls.subject_id = s.id
+       WHERE ls.lecturer_id = ?`,
+      [req.user.id]
+    );
+    res.json({ success: true, subjects: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

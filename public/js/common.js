@@ -18,3 +18,17 @@ async function authFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   return res.json();
 }
+function requireRole(role) {
+  const user = getUser();
+  if (!getToken() || !user || user.role !== role) {
+    window.location.href = 'login.html';
+    return null;
+  }
+  return user;
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = 'login.html';
+}

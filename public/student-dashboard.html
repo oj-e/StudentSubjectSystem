@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — EduVerse AR</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <h2>EduVerse AR</h2>
+    <div>
+      <span id="welcome-text" style="margin-right: 16px; color: var(--text-secondary); font-size: 14px;"></span>
+      <button class="btn-secondary" onclick="logout()">Log out</button>
+    </div>
+  </div>
+
+  <div class="dashboard-content">
+    <h3>My Sessions</h3>
+    <div id="sessions-list"><p class="empty-state">Loading...</p></div>
+
+    <h3>My Attendance</h3>
+    <div id="attendance-list"><p class="empty-state">Loading...</p></div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    const user = requireRole('student');
+    if (user) document.getElementById('welcome-text').textContent = `Hi, ${user.name}`;
+
+    async function loadSessions() {
+      const container = document.getElementById('sessions-list');
+      const data = await authFetch('/sessions/feed');
+
+      if (!data.success || data.sessions.length === 0) {
+        container.innerHTML = '<p class="empty-state">No sessions yet. Once your lecturer schedules one, it\'ll show up here.</p>';
+        return;
+      }
+
+      container.innerHTML = data.sessions.map(s => `
+        <div class="session-card">
+          <div class="session-info">
+            <h4>${s.title} <span class="badge ${s.type === 'live' ? 'badge-live' : 'badge-material'}">${s.type === 'live' ? 'Live' : 'Material'}</span></h4>
+            <div class="session-meta">${s.subject_code} — ${s.subject_title} · ${s.lecturer_name}${s.date ? ' · ' + s.date.split('T')[0] : ''}</div>
+          </div>
+          ${s.type === 'live' ? `<button class="btn-secondary" onclick="joinSession(${s.id})">Join</button>` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function joinSession(sessionId) {
+      const data = await authFetch(`/sessions/${sessionId}/attend`, { method: 'POST' });
+      alert(data.success ? data.message : data.error);
+    }
+
+    async function loadAttendance() {
+      const container = document.getElementById('attendance-list');
+      const data = await authFetch('/sessions/attendance/mine');
+
+      if (!data.success || data.attendance.length === 0) {
+        container.innerHTML = '<p class="empty-state">No attendance recorded yet.</p>';
+        return;
+      }
+
+      container.innerHTML = data.attendance.map(a => `
+        <div class="session-card">
+          <div class="session-info">
+            <h4>${a.title}</h4>
+            <div class="session-meta">${a.subject_code} — ${a.subject_title} · joined ${new Date(a.joined_at).toLocaleString()}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    if (user) {
+      loadSessions();
+      loadAttendance();
+    }
+  </script>
+</body>
+</html>

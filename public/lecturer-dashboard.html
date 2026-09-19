@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — EduVerse AR</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <h2>EduVerse AR</h2>
+    <div>
+      <span id="welcome-text" style="margin-right: 16px; color: var(--text-secondary); font-size: 14px;"></span>
+      <button class="btn-secondary" onclick="logout()">Log out</button>
+    </div>
+  </div>
+
+  <div class="dashboard-content">
+    <h3>Create a Session</h3>
+    <div id="create-message" class="form-message"></div>
+    <form id="create-form">
+      <div class="field">
+        <label for="subject_id">Subject</label>
+        <select id="subject_id" required><option value="">Loading...</option></select>
+      </div>
+      <div class="field">
+        <label for="title">Title</label>
+        <input type="text" id="title" required>
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <input type="text" id="description">
+      </div>
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date">
+      </div>
+      <div class="field">
+        <label for="start_time">Start time</label>
+        <input type="time" id="start_time">
+      </div>
+      <div class="field">
+        <label for="type">Type</label>
+        <select id="type" required>
+          <option value="live">Live</option>
+          <option value="material">Material only</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary">Create session</button>
+    </form>
+
+    <h3>My Sessions</h3>
+    <div id="sessions-list"><p class="empty-state">Loading...</p></div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    const user = requireRole('lecturer');
+    if (user) document.getElementById('welcome-text').textContent = `Hi, ${user.name}`;
+
+    const subjectSelect = document.getElementById('subject_id');
+
+    async function loadSubjects() {
+      const data = await authFetch('/subjects/lecturer/mine');
+      if (data.success && data.subjects.length) {
+        subjectSelect.innerHTML = data.subjects.map(s => `<option value="${s.id}">${s.code} — ${s.title}</option>`).join('');
+      } else {
+        subjectSelect.innerHTML = '<option value="">No subjects assigned yet</option>';
+      }
+    }
+
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const messageEl = document.getElementById('create-message');
+      const payload = {
+        subject_id: subjectSelect.value,
+        title: document.getElementById('title').value.trim(),
+        description: document.getElementById('description').value.trim() || undefined,
+        date: document.getElementById('date').value || undefined,
+        start_time: document.getElementById('start_time').value || undefined,
+        type: document.getElementById('type').value
+      };
+      const data = await authFetch('/sessions', { method: 'POST', body: JSON.stringify(payload) });
+      messageEl.textContent = data.success ? 'Session created' : data.error;
+      messageEl.className = `form-message ${data.success ? 'success' : 'error'}`;
+      if (data.success) {
+        e.target.reset();
+        loadSessions();
+      }
+    });
+
+    async function loadSessions() {
+      const container = document.getElementById('sessions-list');
+      const data = await authFetch('/sessions/mine');
+
+      if (!data.success || data.sessions.length === 0) {
+        container.innerHTML = '<p class="empty-state">No sessions yet. Create one above.</p>';
+        return;
+      }
+
+      container.innerHTML = data.sessions.map(s => `
+        <div class="session-card" id="session-${s.id}">
+          <div class="session-info">
+            <h4>${s.title} <span class="badge ${s.type === 'live' ? 'badge-live' : 'badge-material'}">${s.type === 'live' ? 'Live' : 'Material'}</span>${s.status === 'cancelled' ? ' <span class="badge" style="background:rgba(231,76,60,0.1);color:#c0392b;">Cancelled</span>' : ''}</h4>
+            <div class="session-meta">${s.subject_code} — ${s.subject_title}${s.date ? ' · ' + s.date.split('T')[0] : ''}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary" onclick="viewAttendance(${s.id})">Attendance</button>
+            <button class="btn-secondary" onclick="uploadMaterial(${s.id})">Upload material</button>
+            ${s.status !== 'cancelled' ? `<button class="btn-secondary" onclick="cancelSession(${s.id})">Cancel</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function viewAttendance(sessionId) {
+      const data = await authFetch(`/sessions/${sessionId}/attendance`);
+      if (!data.success) { alert(data.error); return; }
+      if (data.attendance.length === 0) { alert('No one has joined this session yet.'); return; }
+      const list = data.attendance.map(a => `${a.name} — joined ${new Date(a.joined_at).toLocaleString()}`).join('\n');
+      alert(`Attendance for "${data.session_title}":\n\n${list}`);
+    }
+
+    async function cancelSession(sessionId) {
+      if (!confirm('Cancel this session? It will disappear from students\' feeds.')) return;
+      const data = await authFetch(`/sessions/${sessionId}/cancel`, { method: 'PATCH' });
+      alert(data.success ? data.message : data.error);
+      loadSessions();
+    }
+
+    function uploadMaterial(sessionId) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_BASE}/materials/${sessionId}/upload`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${getToken()}` },
+          body: formData
+        });
+        const data = await res.json();
+        alert(data.success ? 'Material uploaded' : data.error);
+      };
+      input.click();
+    }
+
+    if (user) {
+      loadSubjects();
+      loadSessions();
+    }
+  </script>
+</body>
+</html>

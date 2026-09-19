@@ -151,3 +151,78 @@ h1, h2, h3 {
   color: #1e8449;
   display: block;
 }
+
+/* Dashboard layout */
+.topbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topbar h2 { font-size: 18px; }
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-secondary:hover { background: #EAF2FB; }
+
+.dashboard-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.dashboard-content h3 {
+  font-size: 18px;
+  margin: 28px 0 14px;
+}
+
+.session-card {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 20px 24px;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.session-info h4 { font-size: 16px; margin-bottom: 4px; }
+
+.session-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.badge-live { background: rgba(46, 204, 113, 0.1); color: #1e8449; }
+.badge-material { background: rgba(107, 119, 133, 0.1); color: var(--text-secondary); }
+
+.empty-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 40px 20px;
+  font-size: 14px;
+}

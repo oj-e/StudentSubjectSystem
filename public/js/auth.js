@@ -9,8 +9,8 @@ function setLoading(button, isLoading, defaultText) {
 }
 
 function redirectByRole(role) {
-  if (role === 'student') window.location.href = 'subject-select.html';
-  else if (role === 'lecturer') window.location.href = 'lecturer-subject-select.html';
+  if (role === 'student') window.location.href = 'student-dashboard.html';
+  else if (role === 'lecturer') window.location.href = 'lecturer-dashboard.html';
   else if (role === 'admin') window.location.href = 'admin-dashboard.html';
 }
 
