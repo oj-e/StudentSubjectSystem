@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — EduVerse AR</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <h2>EduVerse AR — Admin</h2>
+    <div>
+      <span id="welcome-text" style="margin-right: 16px; color: var(--text-secondary); font-size: 14px;"></span>
+      <button class="btn-secondary" onclick="logout()">Log out</button>
+    </div>
+  </div>
+
+  <div class="dashboard-content">
+    <h3>Platform Stats</h3>
+    <div id="stats-grid" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom: 10px;"></div>
+
+    <h3>Pending Lecturer Approvals</h3>
+    <div id="pending-lecturers"><p class="empty-state">Loading...</p></div>
+
+    <h3>Pending Subject Proposals</h3>
+    <div id="pending-subjects"><p class="empty-state">Loading...</p></div>
+
+    <h3>Pending Subject Requests</h3>
+    <div id="pending-requests"><p class="empty-state">Loading...</p></div>
+
+    <h3>All Users</h3>
+    <div id="all-users"><p class="empty-state">Loading...</p></div>
+
+    <h3>All Subjects</h3>
+    <div id="all-subjects"><p class="empty-state">Loading...</p></div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    const user = requireRole('admin');
+    if (user) document.getElementById('welcome-text').textContent = `Hi, ${user.name}`;
+
+    async function loadStats() {
+      const data = await authFetch('/admin/stats');
+      const grid = document.getElementById('stats-grid');
+      if (!data.success) return;
+      const s = data.stats;
+      const cards = [
+        ['Total users', s.total_users],
+        ['Students', s.total_students],
+        ['Lecturers', s.total_lecturers],
+        ['Subjects', s.total_subjects],
+        ['Sessions', s.total_sessions]
+      ];
+      grid.innerHTML = cards.map(([label, value]) => `
+        <div class="session-card" style="flex:1; min-width:120px; text-align:center; display:block;">
+          <div style="font-size:28px; font-weight:700; color:var(--blue);">${value}</div>
+          <div class="session-meta">${label}</div>
+        </div>
+      `).join('');
+    }
+
+    async function loadPendingLecturers() {
+      const container = document.getElementById('pending-lecturers');
+      const data = await authFetch('/admin/lecturers/pending');
+      if (!data.success || data.lecturers.length === 0) {
+        container.innerHTML = '<p class="empty-state">No pending lecturer approvals.</p>';
+        return;
+      }
+      container.innerHTML = data.lecturers.map(l => `
+        <div class="session-card">
+          <div class="session-info">
+            <h4>${l.name}</h4>
+            <div class="session-meta">${l.email} · Lecturer ID: ${l.lecturer_id || 'N/A'}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-primary" style="width:auto; padding:8px 16px;" onclick="approveLecturer(${l.id})">Approve</button>
+            <button class="btn-secondary" onclick="rejectLecturer(${l.id})">Reject</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function approveLecturer(id) {
+      const data = await authFetch(`/admin/lecturers/${id}/approve`, { method: 'PATCH' });
+      alert(data.success ? data.message : data.error);
+      loadPendingLecturers();
+      loadStats();
+    }
+
+    async function rejectLecturer(id) {
+      if (!confirm('Reject this lecturer application?')) return;
+      const data = await authFetch(`/admin/lecturers/${id}/reject`, { method: 'PATCH' });
+      alert(data.success ? data.message : data.error);
+      loadPendingLecturers();
+    }
+
+    async function loadPendingSubjects() {
+      const container = document.getElementById('pending-subjects');
+      const data = await authFetch('/subjects/pending');
+      if (!data.success || data.subjects.length === 0) {
+        container.innerHTML = '<p class="empty-state">No pending subject proposals.</p>';
+        return;
+      }
+      container.innerHTML = data.subjects.map(s => `
+        <div class="session-card">
+          <div class="session-info">
+            <h4>${s.code} — ${s.title}</h4>
+            <div class="session-meta">Proposed by ${s.proposed_by_name || 'Unknown'}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-primary" style="width:auto; padding:8px 16px;" onclick="approveSubject(${s.id})">Approve</button>
+            <button class="btn-secondary" onclick="rejectSubject(${s.id})">Reject</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function approveSubject(id) {
+      const data = await authFetch(`/subjects/${id}/approve`, { method: 'PATCH' });
+      alert(data.success ? data.message : data.error);
+      loadPendingSubjects();
+      loadAllSubjects();
+      loadStats();
+    }
+
+    async function rejectSubject(id) {
+      if (!confirm('Reject this subject proposal?')) return;
+      const data = await authFetch(`/subjects/${id}/reject`, { method: 'PATCH' });
+      alert(data.success ? data.message : data.error);
+      loadPendingSubjects();
+    }
+
+    async function loadPendingRequests() {
+      const container = document.getElementById('pending-requests');
+      const data = await authFetch('/subjects/requests/pending');
+      if (!data.success || data.requests.length === 0) {
+        container.innerHTML = '<p class="empty-state">No pending subject requests.</p>';
+        return;
+      }
+      container.innerHTML = data.requests.map(r => `
+        <div class="session-card">
+          <div class="session-info">
+            <h4>${r.lecturer_name} wants to teach ${r.subject_code}</h4>
+            <div class="session-meta">${r.subject_title} · ${r.lecturer_email}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-primary" style="width:auto; padding:8px 16px;" onclick="approveRequest(${r.id})">Approve</button>
+            <button class="btn-secondary" onclick="rejectRequest(${r.id})">Reject</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function approveRequest(id) {
+      const data = await authFetch(`/subjects/requests/${id}/approve`, { method: 'PATCH' });
+      alert(data.success ? data.message : data.error);
+      loadPendingRequests();
+    }
+
+    async function rejectRequest(id) {
+      if (!confirm('Reject this subject request?')) return;
+      const data = await authFetch(`/subjects/requests/${id}/reject`, { method: 'PATCH' });
+      alert(data.success ? data.message : data.error);
+      loadPendingRequests();
+    }
+
+    async function loadAllUsers() {
+      const container = document.getElementById('all-users');
+      const data = await authFetch('/admin/users');
+      if (!data.success || data.users.length === 0) {
+        container.innerHTML = '<p class="empty-state">No users yet.</p>';
+        return;
+      }
+      container.innerHTML = data.users.map(u => `
+        <div class="session-card">
+          <div class="session-info">
+            <h4>${u.name} <span class="badge badge-material">${u.role}</span></h4>
+            <div class="session-meta">${u.email} · ${u.status}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function loadAllSubjects() {
+      const container = document.getElementById('all-subjects');
+      const data = await authFetch('/admin/subjects');
+      if (!data.success || data.subjects.length === 0) {
+        container.innerHTML = '<p class="empty-state">No subjects yet.</p>';
+        return;
+      }
+      container.innerHTML = data.subjects.map(s => `
+        <div class="session-card">
+          <div class="session-info">
+            <h4>${s.code} — ${s.title}</h4>
+            <div class="session-meta">${s.department || 'No department'} · ${s.status}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    if (user) {
+      loadStats();
+      loadPendingLecturers();
+      loadPendingSubjects();
+      loadPendingRequests();
+      loadAllUsers();
+      loadAllSubjects();
+    }
+  </script>
+</body>
+</html>
